@@ -1,5 +1,5 @@
 // Naikkan angka versi ini setiap kali index.html diubah, supaya HP mengambil versi terbaru.
-const C = 'kas-saku-v2';
+const C = 'kas-saku-v6';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 const XLSX_URL = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
 
