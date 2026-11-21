@@ -1,5 +1,5 @@
 // Naikkan angka versi ini setiap kali index.html diubah, supaya HP mengambil versi terbaru.
-const C = 'finote-v8';
+const C = 'finote-v9';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 const XLSX_URL = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
 
