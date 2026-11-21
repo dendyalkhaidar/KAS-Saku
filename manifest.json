@@ -1,7 +1,7 @@
 {
-  "name": "Kas Saku",
-  "short_name": "Kas Saku",
-  "description": "Pencatat keuangan multi dompet dan multi mata uang",
+  "name": "Finote",
+  "short_name": "Finote",
+  "description": "Finote: pencatat keuangan multi dompet dan multi mata uang",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
@@ -10,7 +10,17 @@
   "theme_color": "#141414",
   "lang": "id",
   "icons": [
-    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
-    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
   ]
 }

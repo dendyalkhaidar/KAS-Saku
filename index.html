@@ -4,7 +4,8 @@
 <meta name="theme-color" content="#141414">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Kas Saku</title>
+<title>Finote</title>
+<meta name="apple-mobile-web-app-title" content="Finote">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -112,7 +113,10 @@ nav button.on span{background:var(--soft);transform:translateY(-1px)}
 .pad button:active{background:var(--acc);color:var(--accTx);transform:scale(.9)}.dots i.f{transform:scale(1.15)}
 .empty::before{content:'🗒️';display:block;font-size:42px;margin-bottom:8px}
 .emo{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:8px}.emo button{height:42px;font-size:22px;border-radius:12px;background:var(--bg);border:1px solid transparent}.emo button.on{border-color:var(--acc);box-shadow:0 0 0 3px var(--soft)}
-@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+button:active,.tx:active,.cat:active,.pad button:active{transform:none!important}
+.fab:active{transform:translateX(-50%)!important}
+nav,#sheet{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
 #lock{position:fixed;inset:0;background:var(--bg);z-index:30;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px}
 #lock.on{display:flex}
 .dots{display:flex;gap:12px}.dots i{width:14px;height:14px;border-radius:50%;border:2px solid var(--mut)}.dots i.f{background:var(--acc);border-color:var(--acc)}
@@ -196,7 +200,7 @@ function exportView(){
  return `<div class="top"><div class="mn"><b>Lainnya</b></div></div>
  <section class="card"><h3>Unduh file .xlsx</h3><p class="note" style="margin:0 0 12px">Berisi sheet <b>Transaksi</b> dan <b>Ringkasan</b> per dompet dan mata uang.</p>
  <div class="btns" style="flex-direction:column"><button class="pri" data-a="xl" data-v="m">Bulan ${MONTHS[+m-1]} ${y}</button><button class="ghost" data-a="xl" data-v="all">Semua data</button></div></section>${kursCard()}${recCard()}
- <section class="card"><h3>Impor dari Excel</h3><p class="note" style="margin:0 0 12px">Pilih file .xlsx atau .csv hasil ekspor Kas Saku (sheet Transaksi). Data yang sama persis dilewati, dompet yang belum ada dibuat otomatis.</p><button class="ghost" style="width:100%" data-a="imp">Pilih file</button><input id="imp" type="file" accept=".xlsx,.xls,.csv" hidden></section>
+ <section class="card"><h3>Impor dari Excel</h3><p class="note" style="margin:0 0 12px">Pilih file .xlsx atau .csv hasil ekspor Finote (sheet Transaksi). Data yang sama persis dilewati, dompet yang belum ada dibuat otomatis.</p><button class="ghost" style="width:100%" data-a="imp">Pilih file</button><input id="imp" type="file" accept=".xlsx,.xls,.csv" hidden></section>
  <section class="card"><h3>Kunci PIN</h3><p class="note" style="margin:0 0 12px">${S.pin?'PIN aktif ('+S.pin.n+' digit). Layar terkunci setiap aplikasi dibuka kembali.':'PIN belum aktif.'}</p><button class="ghost" style="width:100%" data-a="pinset">${S.pin?'Ubah atau matikan PIN':'Aktifkan PIN'}</button></section>
  <p class="note" style="margin:8px 16px">Data tersimpan di browser perangkat ini saja. Unduh Excel secara berkala sebagai cadangan.</p>`}
 function render(){
@@ -307,9 +311,10 @@ function catSheet(){return `<div class="sh"><b>Kategori baru (${sh.type==='e'?'p
  <div class="btns"><button class="ghost" data-a="close">Batal</button><button class="pri" data-a="savecat">Simpan</button></div></div>`}
 /* pin, transfer, impor */
 const H=s=>{let a=0xdeadbeef,b=0x41c6ce57;for(let i=0;i<s.length;i++){const c=s.charCodeAt(i);a=Math.imul(a^c,2654435761);b=Math.imul(b^c,1597334677)}a=Math.imul(a^(a>>>16),2246822507)^Math.imul(b^(b>>>13),3266489909);b=Math.imul(b^(b>>>16),2246822507)^Math.imul(a^(a>>>13),3266489909);return (4294967296*(2097151&b)+(a>>>0)).toString(36)};
+const LOGO='<svg width="76" height="76" viewBox="0 0 1024 1024" aria-hidden="true"><defs><linearGradient id="lg1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7c4dff"/><stop offset="1" stop-color="#00bfa5"/></linearGradient><linearGradient id="lg2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe066"/><stop offset="1" stop-color="#ffab00"/></linearGradient></defs><rect width="1024" height="1024" rx="230" fill="url(#lg1)"/><g fill="#fff"><rect x="330" y="250" width="120" height="530" rx="60"/><rect x="330" y="250" width="400" height="120" rx="60"/><rect x="330" y="470" width="320" height="110" rx="55"/></g><circle cx="730" cy="310" r="115" fill="url(#lg2)"/><circle cx="730" cy="310" r="89" fill="none" stroke="#e68a00" stroke-width="10" opacity=".8"/></svg>';
 let pin='';
 function showLock(){if(!S.pin)return;pin='';$('#lock').classList.add('on');drawLock()}
-function drawLock(msg){$('#lock').innerHTML=`<b style="font-size:18px">Kas Saku</b><div class="dots">${Array.from({length:S.pin.n},(_,i)=>`<i class="${i<pin.length?'f':''}"></i>`).join('')}</div><small style="min-height:18px;color:${msg?'var(--ex)':'var(--mut)'}">${msg||'Masukkan PIN'}</small><div class="pad">${[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map(k=>k===''?'<span></span>':`<button data-a="k" data-v="${k}">${k}</button>`).join('')}</div>`}
+function drawLock(msg){$('#lock').innerHTML=`${LOGO}<b style="font-size:22px;letter-spacing:.5px">Finote</b><div class="dots">${Array.from({length:S.pin.n},(_,i)=>`<i class="${i<pin.length?'f':''}"></i>`).join('')}</div><small style="min-height:18px;color:${msg?'var(--ex)':'var(--mut)'}">${msg||'Masukkan PIN'}</small><div class="pad">${[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map(k=>k===''?'<span></span>':`<button data-a="k" data-v="${k}">${k}</button>`).join('')}</div>`}
 function pinSheet(){return `<div class="sh"><b>Kunci PIN</b><label>PIN baru (4-6 digit angka)<input id="p-pin" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="mis. 6969"></label><div class="btns">${S.pin?'<button class="del" data-a="pinoff">Matikan</button>':''}<button class="ghost" data-a="close">Batal</button><button class="pri" data-a="pinsave">Simpan</button></div></div>`}
 function trSheet(){return `<div class="sh"><b>Transfer antar dompet</b><p class="note">Menghapus transfer akan menghapus kedua sisinya (dompet asal dan tujuan).</p><div class="btns"><button class="ghost" data-a="close">Tutup</button><button class="del" data-a="deltr">Hapus transfer</button></div></div>`}
 function openTrf(){
