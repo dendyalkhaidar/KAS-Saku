@@ -1,5 +1,5 @@
 // Naikkan angka versi ini setiap kali index.html diubah, supaya HP mengambil versi terbaru.
-const C = 'kas-saku-v1';
+const C = 'kas-saku-v2';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 const XLSX_URL = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
 
@@ -20,7 +20,7 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  if (e.request.method !== 'GET') return;
+  if (e.request.method !== 'GET' || e.request.url.includes('open.er-api.com')) return;
   e.respondWith(
     caches.match(e.request, { ignoreSearch: true }).then(hit =>
       hit || fetch(e.request).then(r => {

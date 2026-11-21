@@ -68,6 +68,9 @@ nav button.on{color:var(--tx);font-weight:700}nav button.on span{filter:none;opa
 .btns{display:flex;gap:8px;margin-top:16px}
 #toast{position:fixed;left:50%;bottom:110px;transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:9px 16px;border-radius:999px;font-size:13px;z-index:20;display:none;max-width:90%;text-align:center}
 .note{color:var(--mut);font-size:13px;margin:6px 4px 0}
+.lb{display:block;font-size:12.5px;color:var(--mut);margin:12px 0 0}.lb input,.lb select{display:block;width:100%;margin-top:4px;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);font-size:16px}
+.fb{padding:10px 12px 0}.fb input{display:block;width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--card);font-size:16px}.fb div{display:flex;gap:6px;margin-top:8px;overflow-x:auto}.fb select{flex:none;padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:var(--card);font-size:13px}
+.tr{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;text-align:center}.tr .cl{height:110px;display:flex;align-items:flex-end;justify-content:center;gap:3px}.tr .cl i{width:42%;min-height:2px;border-radius:3px 3px 0 0}.tr .b1{background:var(--ex)}.tr .b2{background:var(--in)}.tr small{display:block;font-size:11.5px;color:var(--mut);margin-top:4px}.tr em{font-style:normal;font-size:10.5px;color:var(--mut)}
 #lock{position:fixed;inset:0;background:var(--bg);z-index:30;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px}
 #lock.on{display:flex}
 .dots{display:flex;gap:12px}.dots i{width:14px;height:14px;border-radius:50%;border:2px solid var(--mut)}.dots i.f{background:var(--acc);border-color:var(--acc)}
@@ -104,13 +107,15 @@ const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const today=()=>{const d=new Date();return new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 function load(){try{S=JSON.parse(localStorage.getItem(K))}catch(e){}
  if(!S||!S.wallets||!S.wallets.length)S={wallets:[{id:'w1',name:'Tunai',cur:'IDR',init:0}],tx:[],sel:'all'}
- if(S.pin===undefined)S.pin={h:H('6969'),n:4}}
+ if(S.pin===undefined)S.pin={h:H('6969'),n:4}
+ S.rec=S.rec||[];S.debts=S.debts||[];S.cc=S.cc||{e:[],i:[]};S.base=S.base||'IDR';S.rates=S.rates||{};runRec()}
 function save(){try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}}
 const wal=id=>S.wallets.find(w=>w.id===id)||{name:'?',cur:'IDR'};
 const vis=()=>S.sel==='all'?S.wallets:S.wallets.filter(w=>w.id===S.sel);
 function fmt(n,c){const d=DEC[c]??2;return (n<0?'-':'')+(SYM[c]??c+' ')+new Intl.NumberFormat('id-ID',{minimumFractionDigits:d,maximumFractionDigits:d}).format(Math.abs(n))}
 function parseAmt(v){v=String(v).trim();if(v.includes(','))v=v.replace(/\./g,'').replace(',','.');else if(/^\d{1,3}(\.\d{3})+$/.test(v))v=v.replace(/\./g,'');return parseFloat(v)}
-const cat=(t,n)=>n==='Transfer'?['Transfer','🔄','#7a8cff']:(CATS[t].find(c=>c[0]===n)||CATS[t][CATS[t].length-1]);
+const cats=t=>CATS[t].concat((S.cc&&S.cc[t])||[]);
+const cat=(t,n)=>n==='Transfer'?['Transfer','🔄','#7a8cff']:(cats(t).find(c=>c[0]===n)||cats(t)[cats(t).length-1]);
 function toast(m){const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(toastT);toastT=setTimeout(()=>t.style.display='none',2600)}
 function monthTx(){const ids=vis().map(w=>w.id);return S.tx.filter(t=>ids.includes(t.w)&&t.date.startsWith(ym)).sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id))}
 function sums(list){const m={};list.forEach(t=>{if(t.tr)return;const c=wal(t.w).cur;m[c]=m[c]||{e:0,i:0};m[c][t.type]+=t.amt});return m}
@@ -118,35 +123,36 @@ function head(){
  const sm=sums(monthTx()),curs=[...new Set(vis().map(w=>w.cur))].sort(),[y,m]=ym.split('-');
  return `<div class="top"><div class="mn"><button data-a="pm" aria-label="Bulan sebelumnya">‹</button><b>${MONTHS[+m-1]} ${y}</b><button data-a="nm" aria-label="Bulan berikutnya">›</button></div>
  <div class="chips"><button class="chip ${S.sel==='all'?'on':''}" data-a="sel" data-id="all">Semua dompet</button>${S.wallets.map(w=>`<button class="chip ${S.sel===w.id?'on':''}" data-a="sel" data-id="${w.id}">${esc(w.name)} · ${w.cur}</button>`).join('')}</div>
- ${curs.map(c=>{const s=sm[c]||{e:0,i:0};return `<div class="row"><span class="cur">${c}</span><div><small>Pengeluaran</small><strong class="ex">${fmt(s.e,c)}</strong></div><div><small>Pemasukan</small><strong class="in">${fmt(s.i,c)}</strong></div></div>`}).join('')}${vis().filter(w=>w.bud>0).map(budBar).join('')}</div>`}
+ ${curs.map(c=>{const s=sm[c]||{e:0,i:0};return `<div class="row"><span class="cur">${c}</span><div><small>Pengeluaran</small><strong class="ex">${fmt(s.e,c)}</strong></div><div><small>Pemasukan</small><strong class="in">${fmt(s.i,c)}</strong></div></div>`}).join('')}${curs.length>1?gab(sm,curs):''}${vis().filter(w=>w.bud>0).map(budBar).join('')}</div>`}
 function budBar(w){
  const sp=S.tx.filter(t=>t.w===w.id&&t.type==='e'&&!t.tr&&t.date.startsWith(ym)).reduce((s,t)=>s+t.amt,0),p=Math.min(100,sp/w.bud*100);
  return `<div class="bud ${sp>w.bud?'over':''}"><div><span>Anggaran ${esc(w.name)}</span><b>${fmt(sp,w.cur)} / ${fmt(w.bud,w.cur)}</b></div><div class="trk"><div style="width:${p}%;background:${sp>w.bud?'var(--ex)':sp>w.bud*.8?'#e8a33d':'var(--in)'}"></div></div></div>`}
-function home(){
- const list=monthTx(),h=head();
- if(!list.length)return h+'<p class="empty">Belum ada transaksi di bulan ini.<br>Ketuk tombol + untuk mencatat pengeluaran atau pemasukan.</p>';
+function home(){return head()+bar()+'<div id="lst">'+lst()+'</div>'}
+function lst(){
+ const list=lstData(),h='';
+ if(!list.length)return '<p class="empty">'+(F.q||F.c||F.t?'Tidak ada transaksi yang cocok.':'Belum ada transaksi di bulan ini.<br>Ketuk tombol + untuk mencatat pengeluaran atau pemasukan.')+'</p>';
  const days={};list.forEach(t=>(days[t.date]=days[t.date]||[]).push(t));
  return h+Object.keys(days).sort().reverse().map(d=>{
   const dt=new Date(d+'T00:00:00'),sm=sums(days[d]);
   const tot=Object.keys(sm).map(c=>[sm[c].e?'Pengeluaran: '+fmt(sm[c].e,c):'',sm[c].i?'Pemasukan: '+fmt(sm[c].i,c):''].filter(Boolean).join(' · ')).join(' · ');
   return `<div class="day"><span>${dt.getDate()} ${MONTHS[dt.getMonth()].slice(0,3)} ${DAYS[dt.getDay()]}</span><span>${tot}</span></div>`+days[d].map(t=>{
    const c=cat(t.type,t.cat),w=wal(t.w);
-   return `<button class="tx" data-a="edit" data-id="${t.id}"><span class="ic" style="background:${c[2]}33">${c[1]}</span><span class="t"><b>${esc(t.note||t.cat)}</b><small>${t.cat}${S.sel==='all'?' · '+esc(w.name):''}</small></span><span class="a ${t.type==='e'?'ex':'in'}">${t.type==='e'?'-':''}${fmt(t.amt,w.cur)}</span></button>`}).join('')}).join('')}
+   return `<button class="tx" data-a="edit" data-id="${t.id}"><span class="ic" style="background:${c[2]}33">${c[1]}</span><span class="t"><b>${esc(t.note||t.cat)}</b><small>${t.cat}${t.rec?' · 🔁':''}${S.sel==='all'?' · '+esc(w.name):''}</small></span><span class="a ${t.type==='e'?'ex':'in'}">${t.type==='e'?'-':''}${fmt(t.amt,w.cur)}</span></button>`}).join('')}).join('')}
 function chart(){
  let h=head();const list=monthTx().filter(t=>t.type==='e'&&!t.tr);
- if(!list.length)return h+'<p class="empty">Belum ada pengeluaran di bulan ini.</p>';
+ if(!list.length)return h+'<p class="empty">Belum ada pengeluaran di bulan ini.</p>'+trend();
  const by={};list.forEach(t=>{const c=wal(t.w).cur;by[c]=by[c]||{};by[c][t.cat]=(by[c][t.cat]||0)+t.amt});
  return h+Object.keys(by).sort().map(c=>{const arr=Object.entries(by[c]).sort((a,b)=>b[1]-a[1]),tot=arr.reduce((s,a)=>s+a[1],0);
-  return `<section class="card"><h3>Pengeluaran per kategori (${c}) · ${fmt(tot,c)}</h3>${arr.map(([k,v])=>{const ct=cat('e',k),p=Math.round(v/tot*100);return `<div class="bar"><span>${ct[1]} ${k}</span><div class="trk"><div style="width:${p}%;background:${ct[2]}"></div></div><em>${p}%</em><b>${fmt(v,c)}</b></div>`}).join('')}</section>`}).join('')}
+  return `<section class="card"><h3>Pengeluaran per kategori (${c}) · ${fmt(tot,c)}</h3>${arr.map(([k,v])=>{const ct=cat('e',k),p=Math.round(v/tot*100);return `<div class="bar"><span>${ct[1]} ${k}</span><div class="trk"><div style="width:${p}%;background:${ct[2]}"></div></div><em>${p}%</em><b>${fmt(v,c)}</b></div>`}).join('')}</section>`}).join('')+trend()}
 function balance(w){return S.tx.filter(t=>t.w===w.id).reduce((s,t)=>s+(t.type==='i'?t.amt:-t.amt),+w.init||0)}
 function wallets(){
  return `<div class="top"><div class="mn"><b>Dompet</b></div></div>`+S.wallets.map(w=>`<section class="card"><button class="w" data-a="wedit" data-id="${w.id}"><span><b>${esc(w.name)}</b><small>${w.cur} · ketuk untuk ubah</small></span><strong class="${balance(w)<0?'ex':''}">${fmt(balance(w),w.cur)}</strong></button></section>`).join('')+
- `<button class="pri big" data-a="wnew">+ Dompet baru</button><button class="ghost big" data-a="trnew">⇄ Transfer antar dompet</button><p class="note" style="margin:8px 16px">Saldo = saldo awal + pemasukan − pengeluaran. Tiap dompet punya satu mata uang, dan total tidak digabung antar mata uang.</p>`}
+ totalCard()+`<button class="pri big" data-a="wnew">+ Dompet baru</button><button class="ghost big" data-a="trnew">⇄ Transfer antar dompet</button><p class="note" style="margin:8px 16px">Saldo = saldo awal + pemasukan − pengeluaran. Tiap dompet punya satu mata uang. Gabungan antar mata uang memakai kurs di menu Lainnya.</p>`+debtSec()}
 function exportView(){
  const [y,m]=ym.split('-');
  return `<div class="top"><div class="mn"><b>Lainnya</b></div></div>
  <section class="card"><h3>Unduh file .xlsx</h3><p class="note" style="margin:0 0 12px">Berisi sheet <b>Transaksi</b> dan <b>Ringkasan</b> per dompet dan mata uang.</p>
- <div class="btns" style="flex-direction:column"><button class="pri" data-a="xl" data-v="m">Bulan ${MONTHS[+m-1]} ${y}</button><button class="ghost" data-a="xl" data-v="all">Semua data</button></div></section>
+ <div class="btns" style="flex-direction:column"><button class="pri" data-a="xl" data-v="m">Bulan ${MONTHS[+m-1]} ${y}</button><button class="ghost" data-a="xl" data-v="all">Semua data</button></div></section>${kursCard()}${recCard()}
  <section class="card"><h3>Impor dari Excel</h3><p class="note" style="margin:0 0 12px">Pilih file .xlsx atau .csv hasil ekspor Kas Saku (sheet Transaksi). Data yang sama persis dilewati, dompet yang belum ada dibuat otomatis.</p><button class="ghost" style="width:100%" data-a="imp">Pilih file</button><input id="imp" type="file" accept=".xlsx,.xls,.csv" hidden></section>
  <section class="card"><h3>Kunci PIN</h3><p class="note" style="margin:0 0 12px">${S.pin?'PIN aktif ('+S.pin.n+' digit). Layar terkunci setiap aplikasi dibuka kembali.':'PIN belum aktif.'}</p><button class="ghost" style="width:100%" data-a="pinset">${S.pin?'Ubah atau matikan PIN':'Aktifkan PIN'}</button></section>
  <p class="note" style="margin:8px 16px">Data tersimpan di browser perangkat ini saja. Unduh Excel secara berkala sebagai cadangan.</p>`}
@@ -154,22 +160,24 @@ function render(){
  $('#app').innerHTML=tab==='home'?home():tab==='chart'?chart():tab==='wal'?wallets():exportView();
  document.querySelectorAll('nav [data-t],nav [data-a="tab"]').forEach(b=>b.classList.toggle('on',b.dataset.v===tab))}
 /* sheet */
-function rd(){const g=i=>document.getElementById(i);if(mode==='tx'&&g('f-amt')){sh.amt=g('f-amt').value;sh.date=g('f-date').value;sh.note=g('f-note').value}if(mode==='trf'&&g('t-amt')){sh.amt=g('t-amt').value;sh.amt2=g('t-amt2')?g('t-amt2').value:sh.amt2;sh.date=g('t-date').value;sh.note=g('t-note').value}}
-function openSheet(){const s=$('#sheet');s.innerHTML=({tx:txSheet,wal:walSheet,trf:trfSheet,tr:trSheet,pin:pinSheet})[mode]();s.classList.add('open')}
-function closeSheet(){$('#sheet').classList.remove('open');mode=''}
+function rd(){const g=i=>document.getElementById(i);if(mode==='tx'&&g('f-amt')){sh.amt=g('f-amt').value;sh.date=g('f-date')?g('f-date').value:sh.date;if(g('f-day'))sh.day=g('f-day').value;sh.note=g('f-note').value}
+ if(mode==='debt'&&g('d-who')){sh.who=g('d-who').value;sh.cur=g('d-cur').value;sh.amt=g('d-amt').value;sh.paid=g('d-paid').value;sh.date=g('d-date').value;sh.note=g('d-note').value}
+ if(mode==='cat'&&g('c-name')){sh.name=g('c-name').value;sh.ico=g('c-ico').value}if(mode==='trf'&&g('t-amt')){sh.amt=g('t-amt').value;sh.amt2=g('t-amt2')?g('t-amt2').value:sh.amt2;sh.date=g('t-date').value;sh.note=g('t-note').value}}
+function openSheet(){const s=$('#sheet');s.innerHTML=({tx:txSheet,wal:walSheet,trf:trfSheet,tr:trSheet,pin:pinSheet,debt:debtSheet,cat:catSheet})[mode]();s.classList.add('open')}
+function closeSheet(){$('#sheet').classList.remove('open');mode='';bk=null}
 function openTx(id){
  const t=id&&S.tx.find(x=>x.id===id);if(t&&t.tr){mode='tr';sh={tr:t.tr};openSheet();return}mode='tx';
  sh=t?{id:t.id,type:t.type,w:t.w,cat:t.cat,amt:String(t.amt).replace('.',','),date:t.date,note:t.note||''}
   :{type:'e',w:S.sel!=='all'?S.sel:S.wallets[0].id,cat:CATS.e[0][0],amt:'',date:today(),note:''};openSheet()}
 function txSheet(){
  const w=wal(sh.w);
- return `<div class="sh"><div class="seg"><button class="${sh.type==='e'?'on':''}" data-a="ty" data-v="e">Pengeluaran</button><button class="${sh.type==='i'?'on':''}" data-a="ty" data-v="i">Pemasukan</button></div>
+ return `<div class="sh">${sh.rec?'<b>Transaksi berulang (tiap bulan)</b>':''}<div class="seg"><button class="${sh.type==='e'?'on':''}" data-a="ty" data-v="e">Pengeluaran</button><button class="${sh.type==='i'?'on':''}" data-a="ty" data-v="i">Pemasukan</button></div>
  <label>Dompet<select id="f-w" data-a="wsel">${S.wallets.map(x=>`<option value="${x.id}" ${x.id===sh.w?'selected':''}>${esc(x.name)} (${x.cur})</option>`).join('')}</select></label>
  <label>Jumlah (${w.cur})<input id="f-amt" inputmode="decimal" autocomplete="off" placeholder="0" value="${esc(sh.amt)}"></label>
- <div class="cats">${CATS[sh.type].map(c=>`<button class="cat ${sh.cat===c[0]?'on':''}" data-a="cat" data-v="${c[0]}"><i style="background:${c[2]}33">${c[1]}</i>${c[0]}</button>`).join('')}</div>
- <label>Tanggal<input id="f-date" type="date" value="${esc(sh.date)}"></label>
+ <div class="cats">${cats(sh.type).map(c=>`<button class="cat ${sh.cat===c[0]?'on':''}" data-a="cat" data-v="${c[0]}"><i style="background:${c[2]}33">${c[1]}</i>${c[0]}</button>`).join('')}<button class="cat" data-a="newcat"><i style="background:var(--line)">＋</i>Baru</button></div>
+ ${sh.rec?`<label>Tiap tanggal (1-28)<input id="f-day" inputmode="numeric" value="${esc(sh.day)}"></label>`:`<label>Tanggal<input id="f-date" type="date" value="${esc(sh.date)}"></label>`}
  <label>Catatan<input id="f-note" autocomplete="off" placeholder="mis. bensin" value="${esc(sh.note)}"></label>
- <div class="btns">${sh.id?'<button class="del" data-a="deltx">Hapus</button>':''}<button class="ghost" data-a="close">Batal</button><button class="pri" data-a="savetx">Simpan</button></div></div>`}
+ <div class="btns">${sh.id?`<button class="del" data-a="${sh.rec?'delrec':'deltx'}">Hapus</button>`:''}<button class="ghost" data-a="close">Batal</button><button class="pri" data-a="${sh.rec?'saverec':'savetx'}">Simpan</button></div></div>`}
 function openWal(id){
  mode='wal';const w=id&&S.wallets.find(x=>x.id===id);
  sh=w?{id:w.id,name:w.name,cur:w.cur,init:String(w.init||0).replace('.',','),bud:String(w.bud||0).replace('.',',')}:{name:'',cur:'IDR',init:'0',bud:'0'};openSheet()}
@@ -180,6 +188,71 @@ function walSheet(){
  <label>Saldo awal<input id="g-init" inputmode="decimal" value="${esc(sh.init)}"></label>
  <label>Anggaran pengeluaran bulanan (0 = tanpa anggaran)<input id="g-bud" inputmode="decimal" value="${esc(sh.bud)}"></label>
  <div class="btns">${sh.id?'<button class="del" data-a="delwal">Hapus</button>':''}<button class="ghost" data-a="close">Batal</button><button class="pri" data-a="savewal">Simpan</button></div></div>`}
+/* fitur lanjutan */
+let F={q:'',c:'',t:'',all:false},bk=null;
+const COL=['#e8a33d','#d98c80','#4fa8d8','#b07ad8','#6fb58a','#e86f9a','#5fc4c0','#9a9a9a'];
+const nextM=m=>{let[y,o]=m.split('-').map(Number);o++;if(o>12){o=1;y++}return y+'-'+String(o).padStart(2,'0')};
+const short=n=>n>=1e6?(n/1e6).toFixed(1).replace('.0','')+'jt':n>=1e3?Math.round(n/1e3)+'rb':String(Math.round(n));
+function runRec(){
+ const td=today(),cm=td.slice(0,7);let n=0;
+ S.rec.forEach(r=>{let m=r.last?nextM(r.last):r.start;
+  while(m<=cm){const d=m+'-'+String(r.day).padStart(2,'0');if(d>td)break;
+   S.tx.push({id:uid(),w:r.w,type:r.type,cat:r.cat,amt:r.amt,date:d,note:r.note||'',rec:r.id});r.last=m;n++;m=nextM(m)}});
+ if(n)save();return n}
+function lstData(){const ids=vis().map(w=>w.id),q=F.q.trim().toLowerCase();
+ return S.tx.filter(t=>ids.includes(t.w)&&(F.all||t.date.startsWith(ym))&&(!F.c||t.cat===F.c)&&(!F.t||t.type===F.t)&&(!q||((t.note||'')+' '+t.cat).toLowerCase().includes(q))).sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id))}
+function bar(){
+ const cs=[...new Set(cats('e').concat(cats('i')).map(c=>c[0]).concat(['Transfer']))];
+ return `<div class="fb"><input id="q" placeholder="Cari catatan atau kategori" value="${esc(F.q)}" autocomplete="off"><div><select id="fc"><option value="">Semua kategori</option>${cs.map(c=>`<option ${F.c===c?'selected':''}>${esc(c)}</option>`).join('')}</select><select id="ft"><option value="">Semua jenis</option><option value="e" ${F.t==='e'?'selected':''}>Pengeluaran</option><option value="i" ${F.t==='i'?'selected':''}>Pemasukan</option></select><button class="chip ${F.all?'on':''}" data-a="fall">Semua bulan</button></div></div>`}
+function gab(sm,curs){let e=0,i=0,miss=[];
+ curs.forEach(c=>{const s=sm[c]||{e:0,i:0},r=c===S.base?1:S.rates[c];if(!r){miss.push(c);return}e+=s.e*r;i+=s.i*r});
+ return `<div class="row"><span class="cur">≈${S.base}</span><div><small>Total pengeluaran</small><strong class="ex">${fmt(e,S.base)}</strong></div><div><small>Total pemasukan</small><strong class="in">${fmt(i,S.base)}</strong></div></div>${miss.length?`<p class="note">Kurs ${miss.join(', ')} belum diisi (menu Lainnya).</p>`:''}`}
+function totalCard(){
+ if(new Set(S.wallets.map(w=>w.cur)).size<2)return '';
+ let t=0,miss=[];S.wallets.forEach(w=>{const r=w.cur===S.base?1:S.rates[w.cur];if(!r){if(!miss.includes(w.cur))miss.push(w.cur);return}t+=balance(w)*r});
+ return `<section class="card"><h3>Total saldo ≈ ${S.base}</h3><strong style="font-size:20px">${fmt(t,S.base)}</strong>${miss.length?`<p class="note">Kurs ${miss.join(', ')} belum diisi (menu Lainnya).</p>`:''}</section>`}
+function trend(){
+ const ids=vis().map(w=>w.id),[y0,m0]=ym.split('-').map(Number),ms=[];
+ for(let k=5;k>=0;k--){const d=new Date(y0,m0-1-k,1);ms.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'))}
+ return [...new Set(vis().map(w=>w.cur))].sort().map(c=>{
+  const rows=ms.map(m=>{let e=0,i=0;S.tx.forEach(t=>{if(!t.tr&&ids.includes(t.w)&&wal(t.w).cur===c&&t.date.startsWith(m)){if(t.type==='e')e+=t.amt;else i+=t.amt}});return{m,e,i}}),mx=Math.max(1,...rows.map(r=>Math.max(r.e,r.i)));
+  return `<section class="card"><h3>Tren 6 bulan (${c})</h3><div class="tr">${rows.map(r=>`<div><div class="cl"><i class="b1" style="height:${r.e/mx*100}%"></i><i class="b2" style="height:${r.i/mx*100}%"></i></div><small>${MONTHS[+r.m.slice(5)-1].slice(0,3)}</small><em>${short(r.e)}</em></div>`).join('')}</div><p class="note">Merah: pengeluaran (angka di bawah bulan). Hijau: pemasukan.</p></section>`}).join('')}
+function kursCard(){
+ const cs=[...new Set(S.wallets.map(w=>w.cur).concat(S.debts.map(d=>d.cur)))].filter(c=>c!==S.base).sort();
+ return `<section class="card"><h3>Kurs manual</h3><label class="lb">Mata uang dasar<select id="k-base">${Object.keys(SYM).map(c=>`<option ${c===S.base?'selected':''}>${c}</option>`).join('')}</select></label>
+ ${cs.map(c=>`<label class="lb">1 ${c} = … ${S.base}<input class="k-in" data-c="${c}" inputmode="decimal" placeholder="isi kurs" value="${S.rates[c]?String(S.rates[c]).replace('.',','):''}"></label>`).join('')||'<p class="note">Belum ada mata uang lain di dompet.</p>'}
+ <button class="ghost" style="width:100%;margin-top:12px" data-a="kfetch">Ambil kurs terbaru (internet)</button>
+ <p class="note">Kurs boleh diisi manual. Tombol di atas mengambil kurs harian dari open.er-api.com (exchangerate-api.com), hanya jalan di versi GitHub Pages.${S.ratesAt?' Terakhir: '+S.ratesAt+'.':''}</p></section>`}
+async function kfetch(){
+ try{const j=await (await fetch('https://open.er-api.com/v6/latest/'+S.base)).json();
+  if(j.result!=='success')throw 0;
+  const cs=[...new Set(S.wallets.map(w=>w.cur).concat(S.debts.map(d=>d.cur)))].filter(c=>c!==S.base),miss=[];let n=0;
+  cs.forEach(c=>{if(j.rates[c]){S.rates[c]=1/j.rates[c];n++}else miss.push(c)});
+  S.ratesAt=new Date().toLocaleDateString('id-ID');save();render();toast(n+' kurs diperbarui'+(miss.length?', tidak tersedia: '+miss.join(', '):''))
+ }catch(e){toast('Gagal mengambil kurs. Isi manual, atau coba lagi di versi GitHub Pages.')}}
+function recCard(){
+ return `<section class="card"><h3>Transaksi berulang</h3>${S.rec.map(r=>{const w=wal(r.w),c=cat(r.type,r.cat);return `<button class="tx" style="padding:8px 0;border:0;background:none" data-a="recedit" data-id="${r.id}"><span class="ic" style="background:${c[2]}33">${c[1]}</span><span class="t"><b>${esc(r.note||r.cat)}</b><small>Tiap tgl ${r.day} · ${esc(w.name)}</small></span><span class="a ${r.type==='e'?'ex':'in'}">${fmt(r.amt,w.cur)}</span></button>`}).join('')||'<p class="note">Belum ada. Cocok untuk tagihan, langganan, cicilan, atau gaji.</p>'}<button class="ghost" style="width:100%;margin-top:10px" data-a="recnew">+ Tambah transaksi berulang</button></section>`}
+function debtSec(){
+ const rest=d=>d.amt-(d.paid||0),tot={};
+ S.debts.filter(d=>rest(d)>1e-6).forEach(d=>{tot[d.cur]=tot[d.cur]||{r:0,p:0};tot[d.cur][d.dir]+=rest(d)});
+ return `<section class="card"><h3>Piutang &amp; utang</h3>${Object.keys(tot).map(c=>`<p class="note" style="margin:0 0 4px">${c}: piutang ${fmt(tot[c].r,c)} · utang ${fmt(tot[c].p,c)}</p>`).join('')}
+ ${S.debts.slice().sort((a,b)=>(rest(a)>1e-6?0:1)-(rest(b)>1e-6?0:1)||b.date.localeCompare(a.date)).map(d=>{const ok=rest(d)<=1e-6;return `<button class="tx" style="padding:8px 0;border:0;background:none;${ok?'opacity:.55':''}" data-a="dedit" data-id="${d.id}"><span class="ic" style="background:${d.dir==='r'?'var(--in)':'var(--ex)'}33">${d.dir==='r'?'📥':'📤'}</span><span class="t"><b>${esc(d.who)}</b><small>${d.dir==='r'?'Piutang':'Utang'} · ${d.date}${d.note?' · '+esc(d.note):''}</small></span><span class="a ${d.dir==='r'?'in':'ex'}">${ok?'Lunas':fmt(rest(d),d.cur)}</span></button>`}).join('')||'<p class="note">Belum ada catatan. Contoh: uang yang dipinjam keluarga atau teman.</p>'}
+ <button class="ghost" style="width:100%;margin-top:10px" data-a="dnew">+ Catat piutang atau utang</button><p class="note">Catatan ini terpisah dan tidak mengubah saldo dompet.</p></section>`}
+function openDebt(id){mode='debt';const d=id&&S.debts.find(x=>x.id===id);
+ sh=d?{id:d.id,dir:d.dir,who:d.who,cur:d.cur,amt:String(d.amt).replace('.',','),paid:String(d.paid||0).replace('.',','),date:d.date,note:d.note||''}:{dir:'r',who:'',cur:S.base,amt:'',paid:'0',date:today(),note:''};openSheet()}
+function debtSheet(){return `<div class="sh"><div class="seg"><button class="${sh.dir==='r'?'on':''}" data-a="dty" data-v="r">Piutang (dia berutang)</button><button class="${sh.dir==='p'?'on':''}" data-a="dty" data-v="p">Utang (saya berutang)</button></div>
+ <label>Nama<input id="d-who" autocomplete="off" value="${esc(sh.who)}"></label>
+ <label>Mata uang<select id="d-cur">${Object.keys(SYM).map(c=>`<option ${c===sh.cur?'selected':''}>${c}</option>`).join('')}</select></label>
+ <label>Jumlah<input id="d-amt" inputmode="decimal" value="${esc(sh.amt)}"></label>
+ <label>Sudah dibayar<input id="d-paid" inputmode="decimal" value="${esc(sh.paid)}"></label>
+ <label>Tanggal<input id="d-date" type="date" value="${esc(sh.date)}"></label>
+ <label>Catatan<input id="d-note" autocomplete="off" value="${esc(sh.note)}"></label>
+ <div class="btns">${sh.id?'<button class="del" data-a="deldebt">Hapus</button>':''}<button class="ghost" data-a="close">Batal</button><button class="pri" data-a="savedebt">Simpan</button></div></div>`}
+function catSheet(){return `<div class="sh"><b>Kategori baru (${sh.type==='e'?'pengeluaran':'pemasukan'})</b>
+ <label>Nama<input id="c-name" autocomplete="off" value="${esc(sh.name)}"></label>
+ <label>Ikon (ketik satu emoji)<input id="c-ico" value="${esc(sh.ico)}"></label>
+ <div class="cats">${COL.map(c=>`<button class="cat ${sh.col===c?'on':''}" data-a="ccol" data-v="${c}"><i style="background:${c}">${esc(sh.ico)}</i></button>`).join('')}</div>
+ <div class="btns"><button class="ghost" data-a="close">Batal</button><button class="pri" data-a="savecat">Simpan</button></div></div>`}
 /* pin, transfer, impor */
 const H=s=>{let a=0xdeadbeef,b=0x41c6ce57;for(let i=0;i<s.length;i++){const c=s.charCodeAt(i);a=Math.imul(a^c,2654435761);b=Math.imul(b^c,1597334677)}a=Math.imul(a^(a>>>16),2246822507)^Math.imul(b^(b>>>13),3266489909);b=Math.imul(b^(b>>>16),2246822507)^Math.imul(a^(a>>>13),3266489909);return (4294967296*(2097151&b)+(a>>>0)).toString(36)};
 let pin='';
@@ -244,8 +317,8 @@ document.addEventListener('click',e=>{
  else if(a==='sel'){S.sel=id;save();render()}
  else if(a==='add')openTx();
  else if(a==='edit')openTx(id);
- else if(a==='close')closeSheet();
- else if(a==='ty'){rd();sh.type=v;if(!CATS[v].some(c=>c[0]===sh.cat))sh.cat=CATS[v][0][0];openSheet()}
+ else if(a==='close'){if(mode==='cat'&&bk){mode=bk.mode;sh=bk.sh;bk=null;openSheet()}else closeSheet()}
+ else if(a==='ty'){rd();sh.type=v;if(!cats(v).some(c=>c[0]===sh.cat))sh.cat=cats(v)[0][0];openSheet()}
  else if(a==='cat'){rd();sh.cat=v;openSheet()}
  else if(a==='savetx'){
   rd();const amt=parseAmt(sh.amt);
@@ -269,7 +342,7 @@ document.addEventListener('click',e=>{
   save();closeSheet();render();toast('Dompet tersimpan')}
  else if(a==='delwal'){
   if(S.wallets.length<2){toast('Minimal harus ada satu dompet');return}
-  if(b.dataset.armed){S.tx=S.tx.filter(x=>x.w!==sh.id);S.wallets=S.wallets.filter(x=>x.id!==sh.id);if(S.sel===sh.id)S.sel='all';save();closeSheet();render();toast('Dompet dihapus')}
+  if(b.dataset.armed){S.tx=S.tx.filter(x=>x.w!==sh.id);S.rec=S.rec.filter(x=>x.w!==sh.id);S.wallets=S.wallets.filter(x=>x.id!==sh.id);if(S.sel===sh.id)S.sel='all';save();closeSheet();render();toast('Dompet dihapus')}
   else{b.dataset.armed=1;b.textContent='Transaksinya ikut terhapus. Ketuk lagi'}}
  else if(a==='xl')doExport(v==='all'?'all':'m')
  else if(a==='imp')$('#imp').click()
@@ -291,12 +364,52 @@ document.addEventListener('click',e=>{
  else if(a==='pinoff'){S.pin=null;save();closeSheet();render();toast('PIN dimatikan')}
  else if(a==='k'){
   if(v==='⌫')pin=pin.slice(0,-1);else if(pin.length<S.pin.n)pin+=v;
-  if(pin.length===S.pin.n){if(H(pin)===S.pin.h){$('#lock').classList.remove('on');pin=''}else{pin='';drawLock('PIN salah')}}else drawLock()}});
+  if(pin.length===S.pin.n){if(H(pin)===S.pin.h){$('#lock').classList.remove('on');pin=''}else{pin='';drawLock('PIN salah')}}else drawLock()}
+ else if(a==='fall'){F.all=!F.all;render()}
+ else if(a==='newcat'){rd();bk={mode,sh};mode='cat';sh={type:bk.sh.type,name:'',ico:'🏷️',col:COL[0]};openSheet()}
+ else if(a==='ccol'){rd();sh.col=v;openSheet()}
+ else if(a==='savecat'){
+  rd();const bad=/[<>"'&]/g,nm=sh.name.replace(bad,'').trim(),ic=(sh.ico||'').replace(bad,'').trim()||'🏷️';
+  if(!nm){toast('Isi nama kategori');return}
+  if(cats(sh.type).some(c=>c[0].toLowerCase()===nm.toLowerCase())){toast('Nama kategori sudah ada');return}
+  S.cc[sh.type].push([nm,ic,sh.col]);save();
+  if(bk){mode=bk.mode;sh=bk.sh;sh.cat=nm;bk=null;openSheet()}else closeSheet()}
+ else if(a==='recnew'){openTx();sh.rec=true;sh.day='1';openSheet()}
+ else if(a==='recedit'){const r=S.rec.find(x=>x.id===id);mode='tx';sh={rec:true,id:r.id,type:r.type,w:r.w,cat:r.cat,amt:String(r.amt).replace('.',','),day:String(r.day),note:r.note||'',date:today()};openSheet()}
+ else if(a==='saverec'){
+  rd();const amt=parseAmt(sh.amt),day=parseInt(sh.day);
+  if(!(amt>0)){toast('Isi jumlah lebih dari 0');return}
+  if(!(day>=1&&day<=28)){toast('Isi tanggal 1 sampai 28');return}
+  const old=S.rec.find(x=>x.id===sh.id),td=today(),cm=td.slice(0,7),r=old||{id:uid(),last:'',start:day>+td.slice(8)?cm:nextM(cm)};
+  Object.assign(r,{w:sh.w,type:sh.type,cat:sh.cat,amt,note:sh.note.trim(),day});
+  if(!old)S.rec.push(r);runRec();save();closeSheet();render();toast('Transaksi berulang tersimpan')}
+ else if(a==='delrec'){
+  if(b.dataset.armed){S.rec=S.rec.filter(x=>x.id!==sh.id);save();closeSheet();render();toast('Aturan berulang dihapus')}
+  else{b.dataset.armed=1;b.textContent='Ketuk lagi untuk hapus'}}
+ else if(a==='dnew')openDebt()
+ else if(a==='dedit')openDebt(id)
+ else if(a==='dty'){rd();sh.dir=v;openSheet()}
+ else if(a==='savedebt'){
+  rd();const amt=parseAmt(sh.amt),paid=parseAmt(sh.paid||'0')||0,who=sh.who.trim();
+  if(!who){toast('Isi nama');return}
+  if(!(amt>0)){toast('Isi jumlah lebih dari 0');return}
+  const d={id:sh.id||uid(),dir:sh.dir,who,cur:sh.cur,amt,paid:Math.max(0,Math.min(paid,amt)),date:sh.date||today(),note:sh.note.trim()};
+  const i=S.debts.findIndex(x=>x.id===d.id);if(i>=0)S.debts[i]=d;else S.debts.push(d);
+  save();closeSheet();render();toast('Tersimpan')}
+ else if(a==='deldebt'){
+  if(b.dataset.armed){S.debts=S.debts.filter(x=>x.id!==sh.id);save();closeSheet();render();toast('Catatan dihapus')}
+  else{b.dataset.armed=1;b.textContent='Ketuk lagi untuk hapus'}}
+ else if(a==='kfetch')kfetch();});
 document.addEventListener('change',e=>{const t=e.target;
  if(t.id==='f-w'){rd();sh.w=t.value;openSheet()}
  else if(t.id==='t-from'||t.id==='t-to'){rd();sh.from=$('#t-from').value;sh.to=$('#t-to').value;if(sh.from===sh.to)sh[t.id==='t-from'?'to':'from']=S.wallets.find(w=>w.id!==t.value).id;openSheet()}
- else if(t.id==='imp'&&t.files[0]){doImport(t.files[0]);t.value=''}});
-document.addEventListener('visibilitychange',()=>{if(document.hidden)showLock()});
+ else if(t.id==='imp'&&t.files[0]){doImport(t.files[0]);t.value=''}
+ else if(t.classList.contains('k-in')){const v=parseAmt(t.value);if(v>0)S.rates[t.dataset.c]=v;else delete S.rates[t.dataset.c];save();render()}
+ else if(t.id==='k-base'){S.base=t.value;save();render()}
+ else if(t.id==='fc'){F.c=t.value;$('#lst').innerHTML=lst()}
+ else if(t.id==='ft'){F.t=t.value;$('#lst').innerHTML=lst()}});
+document.addEventListener('input',e=>{if(e.target.id==='q'){F.q=e.target.value;$('#lst').innerHTML=lst()}});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)showLock();else if(runRec())render()});
 load();render();showLock();
 (async()=>{try{if(window.claude&&claude.use)DL=await claude.use('downloads')}catch(e){DL=null}})();
 if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
