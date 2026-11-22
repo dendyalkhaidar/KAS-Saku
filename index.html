@@ -243,7 +243,7 @@ function txSheet(){
  <label>Dompet<select id="f-w" data-a="wsel">${S.wallets.map(x=>`<option value="${x.id}" ${x.id===sh.w?'selected':''}>${esc(x.name)} (${x.cur})</option>`).join('')}</select></label>
  <label>Jumlah (${w.cur})<input id="f-amt" inputmode="decimal" autocomplete="off" placeholder="0" value="${esc(sh.amt)}"></label>
  <div class="cats">${cats(sh.type).map(c=>`<button class="cat ${sh.cat===c[0]?'on':''}" data-a="cat" data-v="${c[0]}"><i style="background:${c[2]}33">${c[1]}</i>${c[0]}</button>`).join('')}<button class="cat" data-a="newcat"><i style="background:var(--line)">＋</i>Baru</button></div>
- ${sh.rec?`<label>Tiap tanggal (1-28)<input id="f-day" inputmode="numeric" value="${esc(sh.day)}"></label>`:`<label>Tanggal<input id="f-date" type="date" value="${esc(sh.date)}"></label>`}
+ ${sh.rec?`<label>Tiap tanggal (1-31)<input id="f-day" inputmode="numeric" value="${esc(sh.day)}"></label><p class="note" style="margin:4px 0 0">Jika bulan itu tidak punya tanggalnya (misalnya 31 di bulan 30 hari), dicatat di hari terakhir bulan.</p>`:`<label>Tanggal<input id="f-date" type="date" value="${esc(sh.date)}"></label>`}
  <label>Catatan<input id="f-note" autocomplete="off" placeholder="mis. bensin" value="${esc(sh.note)}"></label>
  ${sh.rec?'':`<div class="btns" style="margin-top:12px"><button class="ghost" style="flex:1" data-a="savefav">★ Simpan favorit</button>${sh.id?'<button class="ghost" style="flex:1" data-a="duptx">⧉ Duplikat</button>':''}</div>`}<div class="btns">${sh.id?`<button class="del" data-a="${sh.rec?'delrec':'deltx'}">Hapus</button>`:''}<button class="ghost" data-a="close">Batal</button><button class="pri" data-a="${sh.rec?'saverec':'savetx'}">Simpan</button></div></div>`}
 function openWal(id){
@@ -268,7 +268,7 @@ const short=n=>n>=1e6?(n/1e6).toFixed(1).replace('.0','')+'jt':n>=1e3?Math.round
 function runRec(){
  const td=today(),cm=td.slice(0,7);let n=0;
  S.rec.forEach(r=>{let m=r.last?nextM(r.last):r.start;
-  while(m<=cm){const d=m+'-'+String(r.day).padStart(2,'0');if(d>td)break;
+  while(m<=cm){const dim=new Date(+m.slice(0,4),+m.slice(5),0).getDate(),d=m+'-'+String(Math.min(r.day,dim)).padStart(2,'0');if(d>td)break;
    S.tx.push({id:uid(),w:r.w,type:r.type,cat:r.cat,amt:r.amt,date:d,note:r.note||'',rec:r.id});r.last=m;n++;m=nextM(m)}});
  if(n)save();return n}
 function lstData(){const ids=vis().map(w=>w.id),q=F.q.trim().toLowerCase();
@@ -515,7 +515,7 @@ document.addEventListener('click',e=>{
  else if(a==='saverec'){
   rd();const amt=parseAmt(sh.amt),day=parseInt(sh.day);
   if(!(amt>0)){toast('Isi jumlah lebih dari 0');return}
-  if(!(day>=1&&day<=28)){toast('Isi tanggal 1 sampai 28');return}
+  if(!(day>=1&&day<=31)){toast('Isi tanggal 1 sampai 31');return}
   const old=S.rec.find(x=>x.id===sh.id),td=today(),cm=td.slice(0,7),r=old||{id:uid(),last:'',start:day>+td.slice(8)?cm:nextM(cm)};
   Object.assign(r,{w:sh.w,type:sh.type,cat:sh.cat,amt,note:sh.note.trim(),day});
   if(!old)S.rec.push(r);runRec();save();closeSheet();render();toast('Transaksi berulang tersimpan')}
